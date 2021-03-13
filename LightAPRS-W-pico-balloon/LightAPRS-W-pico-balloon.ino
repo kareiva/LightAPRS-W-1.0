@@ -165,6 +165,7 @@ Si5351 si5351(0x60);
 TinyGPSPlus gps;
 Adafruit_BMP085 bmp;
 JTEncode jtencode;
+void GridLocator(char *dst, float latt, float lon, uint8_t len=4);
 
 void setup() {
   wdt_enable(WDTO_8S);
@@ -795,26 +796,40 @@ void set_tx_buffer()
   }
 }
 
-void GridLocator(char *dst, float latt, float lon) {
-  int o1, o2;
-  int a1, a2;
+void GridLocator(char *dst, float latt, float lon, uint8_t len ) {
+  int o1, o2, o3;
+  int a1, a2, a3;
   float remainder;
   // longitude
   remainder = lon + 180.0;
   o1 = (int)(remainder / 20.0);
   remainder = remainder - (float)o1 * 20.0;
   o2 = (int)(remainder / 2.0);
+  if (len > 4) {
+    remainder = remainder - (float)o2 * 20.0;
+    o3 = (int)(remainder / 2.0);
+  }
+
   // latitude
   remainder = latt + 90.0;
   a1 = (int)(remainder / 10.0);
   remainder = remainder - (float)a1 * 10.0;
   a2 = (int)(remainder);
-
+  if (len > 4) {
+    remainder = remainder - (float)a2 * 10.0;
+    a3 = (int)(remainder);
+  }
   dst[0] = (char)o1 + 'A';
   dst[1] = (char)a1 + 'A';
   dst[2] = (char)o2 + '0';
   dst[3] = (char)a2 + '0';
-  dst[4] = (char)0;
+
+  if (len > 4) {
+    dst[4] = (char)o3 + 'A';
+    dst[5] = (char)a3 + 'A';
+  }
+
+  dst[len] = (char)0;
 }
 
 void freeMem() {
