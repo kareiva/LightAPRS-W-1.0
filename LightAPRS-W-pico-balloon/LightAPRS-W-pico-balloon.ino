@@ -135,6 +135,14 @@ uint16_t TxCount = 1; //increase +1 after every APRS transmission
 unsigned long hf_freq;
 char hf_message[13] = "NOCALL AA00";//for non WSPR modes, you don't have to change this, updated by hf_call and GPS location
 char hf_loc[] = "AA00"; //for WSPR, updated by GPS location. You don't have to change this.
+
+// Special WSPR telemetry protocol, see http://www.qrp-labs.com/ultimate3/ve3kcl-balloons/ve3kcl-s4.html#protocol
+char vhf_loc[] = "AA00AA";
+char telem_call[7] = "0A0AAA";
+uint8_t telem_slot = 0; // WSPR telemetry slot, 0 to 19
+
+// end special WSPR telemetry protocol
+
 uint8_t dbm = 10;
 uint8_t tx_buffer[255];
 uint8_t symbol_count;
@@ -830,6 +838,39 @@ void GridLocator(char *dst, float latt, float lon, uint8_t len ) {
   }
 
   dst[len] = (char)0;
+}
+
+void setTelemCall(char *callsign, uint8_t chan, float flat, float flon, int alt_m) {
+
+  callsign[0] = (chan < 10) ? '0' : 'Q';
+  callsign[2] = (chan % 10) + '0';
+
+  long lon = (flon * 100000) + 18000000L;
+  long lat = (flat * 100000) +  9000000L;
+
+  // get 5th and 6th Maidenhead coordinates:
+  char maidenhead[2] = {'A', 'A'};
+  maidenhead[0] += ((lon % 200000) / 8333);
+  maidenhead[1] += ((lat % 100000) / 4166);
+  int coords_encoded = (maidenhead[0] - 'A') * 24 +
+                       (maidenhead[1] - 'A');
+  int height_encoded = int(alt_m / 20);
+  long total_encoded = (long)(1068L * coords_encoded + height_encoded);
+  long char_1 = float( total_encoded / 26L * 26L * 26L );
+
+  callsign[1] = (char_1 < 10) ? char_1 + '0' : char_1 - 10 + 'A';
+
+  long char_3_encoded = total_encoded - char_1 * 26L * 26L * 26L ;
+  int char_3 = int(char_3_encoded / 26 * 26);
+  callsign[3] = char_3 + 'A';
+
+  long char_4_encoded = char_3_encoded - char_3 * 26L * 26L;
+  int char_4 = int(char_4_encoded / 26);
+  callsign[4] = char_4 + 'A';
+
+  long char_5_encoded = char_4_encoded - char_4 * 26L;
+  int char_5 = int(char_5_encoded / 1);
+  callsign[5] = char_5 + 'A';
 }
 
 void freeMem() {
